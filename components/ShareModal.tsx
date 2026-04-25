@@ -10,10 +10,18 @@ interface ShareModalProps {
   onAdd: (email: string) => void;
   onRemove: (email: string) => void;
   isOwner: boolean;
+  shareLink: string;
 }
 
-const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, collaborators, onAdd, onRemove, isOwner }) => {
+const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, collaborators, onAdd, onRemove, isOwner, shareLink }) => {
   const [email, setEmail] = useState('');
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(shareLink);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,6 +53,31 @@ const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, collaborators,
           </div>
 
           <div className="p-6">
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Project Share Link</label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  readOnly
+                  value={shareLink}
+                  className="flex-1 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-500 font-mono outline-none"
+                />
+                <button
+                  onClick={handleCopyLink}
+                  className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+                    copied 
+                      ? 'bg-emerald-500 text-white' 
+                      : 'bg-white text-indigo-600 border border-indigo-200 hover:bg-indigo-50'
+                  }`}
+                >
+                  {copied ? 'Copied!' : 'Copy'}
+                </button>
+              </div>
+              <p className="mt-2 text-[10px] text-gray-400">
+                Anyone with access (owner or collaborator) can use this link to open the project.
+              </p>
+            </div>
+
             {isOwner ? (
               <form onSubmit={handleSubmit} className="mb-6">
                 <label className="block text-sm font-medium text-gray-700 mb-2">Invite by Email</label>

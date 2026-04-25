@@ -136,6 +136,7 @@ const App: React.FC = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [shareLink, setShareLink] = useState('');
   const [isAIModalOpen, setIsAIModalOpen] = useState(false);
   const [aiTarget, setAiTarget] = useState<{ divisionId: string; itemId: string; name: string } | null>(null);
   const [isAIProcessing, setIsAIProcessing] = useState(false);
@@ -217,11 +218,69 @@ const App: React.FC = () => {
       setIsAuthReady(true);
       return;
     }
+
+    // Handle deep linking for shared projects
+    const urlParams = new URLSearchParams(window.location.search);
+    const projectIdFromUrl = urlParams.get('project') || urlParams.get('budget');
+
+    if (projectIdFromUrl && !currentProjectId) {
+      console.log("Deep link detected for project:", projectIdFromUrl);
+      // Wait for auth to be ready before trying to fetch
+      const fetchProject = async (potentialUser: User | null) => {
+        if (!potentialUser) {
+          showToast("Please log in to view this shared project.", "info");
+          return;
+        }
+        try {
+          const docRef = doc(db, 'estimates', projectIdFromUrl);
+          const docSnap = await getDoc(docRef);
+          if (docSnap.exists()) {
+            const data = docSnap.data();
+            // Check if user has access
+            const normalizedUserEmail = potentialUser.email?.toLowerCase().trim();
+            const isCollaborator = (data.collaborators || [])
+              .map((c: string) => c.toLowerCase().trim())
+              .includes(normalizedUserEmail);
+            const isOwner = data.userId === potentialUser.uid;
+
+            if (isOwner || isCollaborator) {
+              setProjectInfo(data.projectInfo);
+              setDivisions(data.divisions);
+              setCollaborators(data.collaborators || []);
+              setCurrentProjectId(projectIdFromUrl);
+              lastSavedRef.current = JSON.stringify({ 
+                projectInfo: data.projectInfo, 
+                divisions: data.divisions 
+              });
+              showToast(`Project loaded: ${data.projectInfo.jobName}`, "success");
+              // Clean up URL
+              window.history.replaceState({}, document.title, window.location.pathname);
+            } else {
+              showToast("You don't have permission to view this project.", "error");
+            }
+          } else {
+            showToast("Project not found.", "error");
+          }
+        } catch (err) {
+          console.error("Error loading deep-linked project:", err);
+          showToast("Failed to load project from link.", "error");
+        }
+      };
+
+      // We'll call this inside the onAuthStateChanged listener below
+      (window as any)._deepLinkFetcher = fetchProject;
+    }
+
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       setIsAuthReady(true);
       
       if (currentUser) {
+        // If we have a deep link, try to fetch it now that we're logged in
+        if ((window as any)._deepLinkFetcher) {
+          (window as any)._deepLinkFetcher(currentUser);
+          delete (window as any)._deepLinkFetcher;
+        }
         // Fetch user template
         try {
           if (!isQuotaExceeded) {
@@ -814,6 +873,14 @@ const App: React.FC = () => {
     generateMissingPricesPdf(projectInfo, divisions);
   };
 
+  const handleOpenShare = () => {
+    if (!currentProjectId) return;
+    const url = new URL(window.location.href);
+    url.searchParams.set('project', currentProjectId);
+    setShareLink(url.toString());
+    setIsShareModalOpen(true);
+  };
+
   const handleShareAdd = async (email: string) => {
     if (isQuotaExceeded) {
        showToast("Cloud storage is paused. Cannot share right now.", "warning");
@@ -1159,7 +1226,7 @@ const App: React.FC = () => {
             onLoad={handleLoadProject}
             onExportExcel={handleExportExcel}
             onOpenProjectList={() => setIsProjectListOpen(true)}
-            onShare={() => setIsShareModalOpen(true)}
+            onShare={handleOpenShare}
             canShare={!!(user && currentProjectId)}
             onGeminiHelp={handleGeminiHelp}
             isSaving={isSaving}
@@ -1201,6 +1268,7 @@ const App: React.FC = () => {
           onAdd={handleShareAdd}
           onRemove={handleShareRemove}
           isOwner={isOwner}
+          shareLink={shareLink}
         />
 
         <ProjectList 
