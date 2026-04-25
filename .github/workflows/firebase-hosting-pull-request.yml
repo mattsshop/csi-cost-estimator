@@ -15,8 +15,6 @@ jobs:
         run: npm run build
       - name: Deploy to Firebase
         uses: FirebaseExtended/action-hosting-deploy@v0
-        env:
-          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
         with:
           repoToken: '${{ secrets.GITHUB_TOKEN }}'
           firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_GEN_LANG_CLIENT_0982862611 }}'
