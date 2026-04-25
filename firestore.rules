@@ -21,11 +21,33 @@ service cloud.firestore {
       return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
     }
 
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email == 'matt@mattsshop.com' ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+      );
+    }
+
+    function isApproved() {
+      return isSignedIn() && (
+        isAdmin() ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.status == 'approved'
+      );
+    }
+
     // Check if user is a collaborator by email (case-insensitive)
     function isCollaborator(data) {
       return isSignedIn() && 
              data.get('collaborators', []) is list &&
              data.get('collaborators', []).hasAny([request.auth.token.get('email', '').lower()]);
+    }
+
+    // Standard User Profile Validation
+    function isValidUser(data) {
+      return data.uid is string && data.uid.size() <= 128
+          && data.email is string && data.email.size() <= 256
+          && data.status in ['pending', 'approved', 'rejected']
+          && data.role in ['user', 'admin'];
     }
 
     // Standard Estimate Validation
@@ -44,46 +66,59 @@ service cloud.firestore {
 
     // 1. User Profiles
     match /users/{userId} {
-      allow read: if isSignedIn() && request.auth.uid == userId;
-      allow write: if isSignedIn() && request.auth.uid == userId;
+      allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      
+      allow create: if isSignedIn() && request.auth.uid == userId
+        && isValidUser(incoming())
+        && incoming().status == (request.auth.token.email == 'matt@mattsshop.com' ? 'approved' : 'pending')
+        && incoming().role == (request.auth.token.email == 'matt@mattsshop.com' ? 'admin' : 'user');
+
+      allow update: if isSignedIn() && (
+        isAdmin() || 
+        (request.auth.uid == userId 
+          && isValidUser(incoming())
+          && incoming().status == existing().status 
+          && incoming().role == existing().role
+          && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoURL', 'updatedAt'])
+        )
+      );
     }
 
     // 2. Estimates
     match /estimates/{estimateId} {
       // List: Optimized for the Firestore Query Prover.
-      // Flattened to ensure the backend can statically verify the 'array-contains' query.
-      allow list: if isSignedIn() && (
+      allow list: if isApproved() && (
         resource.data.userId == request.auth.uid || 
         request.auth.token.email in resource.data.collaborators ||
         request.auth.token.email.lower() in resource.data.collaborators
       );
 
       // Get: Standard row-level check.
-      allow get: if isSignedIn() && (
-        resource.data.userId == request.auth.uid || isCollaborator(resource.data)
+      allow get: if isApproved() && (
+        resource.data.userId == request.auth.uid || isCollaborator(resource.data) || isAdmin()
       );
       
       // Create: user must be owner
-      allow create: if isSignedIn() 
+      allow create: if isApproved() 
         && isValidId(estimateId)
         && incoming().userId == request.auth.uid
         && isValidEstimate(incoming());
       
       // Update: Owner or Collaborator
-      allow update: if isSignedIn() && (
-        (resource.data.userId == request.auth.uid || isCollaborator(resource.data)) &&
+      allow update: if isApproved() && (
+        (resource.data.userId == request.auth.uid || isCollaborator(resource.data) || isAdmin()) &&
         incoming().userId == existing().userId && 
         isValidEstimate(incoming()) &&
         incoming().diff(existing()).affectedKeys().hasOnly(['projectInfo', 'divisions', 'updatedAt', 'collaborators'])
       );
       
       // Delete: Only owner
-      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow delete: if isApproved() && (resource.data.userId == request.auth.uid || isAdmin());
     }
 
     // 3. User Templates
     match /userTemplates/{userId} {
-      allow read, write: if isSignedIn() && request.auth.uid == userId;
+      allow read, write: if isApproved() && request.auth.uid == userId;
     }
 
     // Default deny for everything else

@@ -15,6 +15,8 @@ import ErrorBoundary from './components/ErrorBoundary';
 import ConfirmModal from './components/ConfirmModal';
 import Toast, { ToastType } from './components/Toast';
 import ShareModal from './components/ShareModal';
+import PendingApproval from './components/PendingApproval';
+import AdminPanel from './components/AdminPanel';
 import { UserPlus, Save, Loader2 } from 'lucide-react';
 
 // Firebase imports
@@ -119,6 +121,10 @@ const raceWithTimeout = <T,>(promise: Promise<T>, timeoutMs: number = 4000): Pro
 const App: React.FC = () => {
   console.log("App component rendering...");
   const [user, setUser] = useState<User | null>(null);
+  const [userProfile, setUserProfile] = useState<{ status: string; role: string } | null>(null);
+  const isApproved = userProfile?.status === 'approved' || userProfile?.role === 'admin' || user?.email === 'matt@mattsshop.com';
+  const isAdmin = userProfile?.role === 'admin' || user?.email === 'matt@mattsshop.com';
+
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [projectInfo, setProjectInfo] = useState<ProjectInfo>({
     jobName: 'Project Name',
@@ -137,7 +143,9 @@ const App: React.FC = () => {
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [shareLink, setShareLink] = useState('');
+
   const [isAIModalOpen, setIsAIModalOpen] = useState(false);
+  const [isAdminPanelOpen, setIsAdminPanelOpen] = useState(false);
   const [aiTarget, setAiTarget] = useState<{ divisionId: string; itemId: string; name: string } | null>(null);
   const [isAIProcessing, setIsAIProcessing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -273,9 +281,50 @@ const App: React.FC = () => {
 
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
-      setIsAuthReady(true);
       
       if (currentUser) {
+        // Fetch/Init User Profile
+        try {
+          if (!isQuotaExceeded) {
+            const userDocRef = doc(db, 'users', currentUser.uid);
+            const userDocSnap = await getDoc(userDocRef);
+            
+            if (userDocSnap.exists()) {
+              const data = userDocSnap.data();
+              setUserProfile({ status: data.status, role: data.role });
+            } else {
+              // Create new profile
+              const isMatt = currentUser.email?.toLowerCase().trim() === 'matt@mattsshop.com';
+              const initialStatus = isMatt ? 'approved' : 'pending';
+              const initialRole = isMatt ? 'admin' : 'user';
+              
+              const newProfile = {
+                uid: currentUser.uid,
+                email: currentUser.email,
+                displayName: currentUser.displayName,
+                photoURL: currentUser.photoURL,
+                status: initialStatus,
+                role: initialRole,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+              };
+              
+              await setDoc(userDocRef, newProfile, { merge: true });
+              setUserProfile({ status: initialStatus, role: initialRole });
+            }
+          }
+        } catch (err) {
+          console.error("Error managing user profile:", err);
+          // Fallback if rules block reading profile before it exists (though create should work)
+          if (currentUser.email?.toLowerCase().trim() === 'matt@mattsshop.com') {
+            setUserProfile({ status: 'approved', role: 'admin' });
+          } else {
+            setUserProfile({ status: 'pending', role: 'user' });
+          }
+        }
+
+        setIsAuthReady(true);
+
         // If we have a deep link, try to fetch it now that we're logged in
         if ((window as any)._deepLinkFetcher) {
           (window as any)._deepLinkFetcher(currentUser);
@@ -296,29 +345,9 @@ const App: React.FC = () => {
         } catch (err) {
           console.error("Error fetching user template:", err);
         }
-
-        // Save user profile
-        try {
-          if (!isQuotaExceeded) {
-            // We use a shorter timeout here because this is background work
-            await raceWithTimeout(setDoc(doc(db, 'users', currentUser.uid), {
-              uid: currentUser.uid,
-              email: currentUser.email,
-              displayName: currentUser.displayName,
-              photoURL: currentUser.photoURL,
-              updatedAt: new Date().toISOString()
-            }, { merge: true }), 3000);
-          }
-        } catch (err: any) {
-          const msg = (err.message || "").toLowerCase();
-          const code = err.code || "";
-          if (msg.includes("quota") || msg.includes("resource-exhausted") || code === "resource-exhausted" || msg.includes("timeout")) {
-            setIsQuotaExceeded(true);
-            localStorage.setItem('firestore_quota_error', JSON.stringify({ timestamp: Date.now() }));
-          }
-          console.error("Error saving user profile:", err);
-        }
       } else {
+        setUserProfile(null);
+        setIsAuthReady(true);
         setUserProjects([]);
         setCurrentProjectId(null);
         setProjectInfo({
@@ -1235,31 +1264,39 @@ const App: React.FC = () => {
             onLogin={handleLogin}
             onLogout={handleLogout}
             isLoggingIn={isLoggingIn}
+            isAdmin={isAdmin}
+            onOpenAdmin={() => setIsAdminPanelOpen(true)}
           />
-          <CostTable 
-            divisions={divisions} 
-            on_change={handleItemChange} 
-            onAddItem={handleAddItem}
-            onRemoveItem={handleRemoveItem}
-            onAIQuoteClick={handleAIQuoteClick}
-            isClientView={isClientView} 
-            overheadPercent={projectInfo.add}
-          />
+          {user && !isApproved ? (
+            <PendingApproval status={userProfile?.status || 'pending'} />
+          ) : (
+            <>
+              <CostTable 
+                divisions={divisions} 
+                on_change={handleItemChange} 
+                onAddItem={handleAddItem}
+                onRemoveItem={handleRemoveItem}
+                onAIQuoteClick={handleAIQuoteClick}
+                isClientView={isClientView} 
+                overheadPercent={projectInfo.add}
+              />
+              <Summary 
+                projectInfo={projectInfo}
+                divisions={divisions}
+                subTotal={subTotalWithOverhead}
+                marginAmount={marginAmount}
+                grandTotal={grandTotal}
+                isClientView={isClientView}
+                onClientViewToggle={() => setIsClientView(v => !v)}
+                onGeneratePdf={handleGeneratePdf}
+                onReviewMissingPrices={handleReviewMissingPrices}
+                onSave={() => handleSaveProject(false)}
+                onSaveTemplate={handleSaveAsTemplate}
+                isSaving={isSaving}
+              />
+            </>
+          )}
         </main>
-        <Summary 
-          projectInfo={projectInfo}
-          divisions={divisions}
-          subTotal={subTotalWithOverhead}
-          marginAmount={marginAmount}
-          grandTotal={grandTotal}
-          isClientView={isClientView}
-          onClientViewToggle={() => setIsClientView(v => !v)}
-          onGeneratePdf={handleGeneratePdf}
-          onReviewMissingPrices={handleReviewMissingPrices}
-          onSave={() => handleSaveProject(false)}
-          onSaveTemplate={handleSaveAsTemplate}
-          isSaving={isSaving}
-        />
 
         <ShareModal 
           isOpen={isShareModalOpen}
@@ -1269,6 +1306,11 @@ const App: React.FC = () => {
           onRemove={handleShareRemove}
           isOwner={isOwner}
           shareLink={shareLink}
+        />
+
+        <AdminPanel 
+          isOpen={isAdminPanelOpen}
+          onClose={() => setIsAdminPanelOpen(false)}
         />
 
         <ProjectList 

@@ -1,7 +1,7 @@
 
 import React, { useRef } from 'react';
 import { ProjectInfo } from '../types';
-import { Save, FolderOpen, FileSpreadsheet, Sparkles, Loader2, Plus, LogIn, LogOut, User as UserIcon, UserPlus } from 'lucide-react';
+import { Save, FolderOpen, FileSpreadsheet, Sparkles, Loader2, Plus, LogIn, LogOut, User as UserIcon, UserPlus, Shield } from 'lucide-react';
 import { User } from 'firebase/auth';
 
 interface HeaderProps {
@@ -22,6 +22,8 @@ interface HeaderProps {
   onLogin: () => void;
   onLogout: () => void;
   isLoggingIn: boolean;
+  isAdmin: boolean;
+  onOpenAdmin: () => void;
 }
 
 const InfoInput: React.FC<{label: string, value: string | number, onChange: (e: React.ChangeEvent<HTMLInputElement>) => void, type?: string, step?: string}> = ({label, value, onChange, type = "text", step}) => (
@@ -40,7 +42,7 @@ const InfoInput: React.FC<{label: string, value: string | number, onChange: (e: 
 );
 
 
-const Header: React.FC<HeaderProps> = ({ projectInfo, onChange, onSave, onNewProject, onLoad, onExportExcel, onOpenProjectList, onSaveTemplate, onShare, canShare, onGeminiHelp, isSaving, isGenerating, user, onLogin, onLogout, isLoggingIn }) => {
+const Header: React.FC<HeaderProps> = ({ projectInfo, onChange, onSave, onNewProject, onLoad, onExportExcel, onOpenProjectList, onSaveTemplate, onShare, canShare, onGeminiHelp, isSaving, isGenerating, user, onLogin, onLogout, isLoggingIn, isAdmin, onOpenAdmin }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleLoadClick = () => {
@@ -50,9 +52,20 @@ const Header: React.FC<HeaderProps> = ({ projectInfo, onChange, onSave, onNewPro
   return (
     <header className="mb-8">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">AI Studio Cost Estimator</h1>
-          <p className="text-gray-600 mt-1">Cloud-synced estimation powered by Google AI Studio.</p>
+        <div className="flex items-center gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">AI Studio Cost Estimator</h1>
+            <p className="text-gray-600 mt-1">Cloud-synced estimation powered by Google AI Studio.</p>
+          </div>
+          {isAdmin && (
+            <button
+              onClick={onOpenAdmin}
+              className="px-3 py-1 bg-purple-100 text-purple-700 hover:bg-purple-200 rounded-full text-xs font-bold transition-colors flex items-center gap-1.5"
+            >
+              <Shield size={12} />
+              ADMIN PANEL
+            </button>
+          )}
         </div>
         
         <div className="flex flex-wrap items-center gap-2">
