@@ -1,5 +1,5 @@
 
-// AI-DEPLOY: Triggering GitHub Export - Manual workflow trigger added.
+// AI-DEPLOY: Permissions check - ensure 'Firebase Hosting Admin' role is set in IAM console.
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { initialData } from './data/csiCodes';
 import { Division as DivisionType, ProjectInfo, LineItem, ProjectData } from './types';
