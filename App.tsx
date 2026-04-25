@@ -1,5 +1,4 @@
 
-// AI-DEPLOY: Opted into Node 24 at job level to suppress warnings. Still ensure 'Firebase Hosting Admin' role.
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { initialData } from './data/csiCodes';
 import { Division as DivisionType, ProjectInfo, LineItem, ProjectData } from './types';
