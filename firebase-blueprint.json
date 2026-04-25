@@ -1,0 +1,62 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "Stores user-specific settings and profile information.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "The unique identifier for the user." },
+        "email": { "type": "string", "format": "email", "description": "The user's email address." },
+        "displayName": { "type": "string", "description": "The user's display name." },
+        "photoURL": { "type": "string", "format": "uri", "description": "The user's profile picture URL." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "When the user profile was created." }
+      },
+      "required": ["uid", "email"]
+    },
+    "Estimate": {
+      "title": "Estimate",
+      "description": "Represents a construction cost estimate project.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "The unique ID of the estimate." },
+        "userId": { "type": "string", "description": "The ID of the user who owns this estimate." },
+        "collaborators": { 
+          "type": "array", 
+          "items": { "type": "string" },
+          "description": "List of user IDs who have access to this estimate." 
+        },
+        "projectInfo": { "type": "object", "description": "General project information (name, address, etc.)" },
+        "divisions": { "type": "array", "description": "List of divisions and their line items." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "When the estimate was created." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "When the estimate was last updated." }
+      },
+      "required": ["id", "userId", "projectInfo", "divisions"]
+    },
+    "UserTemplate": {
+      "title": "User Template",
+      "description": "A custom budget template saved by the user.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "divisions": { "type": "array" },
+        "defaultProjectInfo": { "type": "object" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "divisions"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "Collection of user profiles."
+    },
+    "/estimates/{estimateId}": {
+      "schema": "Estimate",
+      "description": "Collection of construction cost estimates."
+    },
+    "/userTemplates/{userId}": {
+      "schema": "UserTemplate",
+      "description": "User's master budget template."
+    }
+  }
+}

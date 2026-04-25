@@ -1,0 +1,5 @@
+{
+  "name": "Construction Cost Estimator",
+  "description": "An application to create detailed construction cost estimates based on CSI codes. Users can input costs for materials, labor, equipment, and sub-contracts, apply overhead and profit margins, and generate a PDF estimate for clients.",
+  "requestFramePermissions": []
+}

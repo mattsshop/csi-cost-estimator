@@ -1,0 +1,94 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Global Helpers
+    // ===============================================================
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // Check if user is a collaborator by email (case-insensitive)
+    function isCollaborator(data) {
+      return isSignedIn() && 
+             data.get('collaborators', []) is list &&
+             data.get('collaborators', []).hasAny([request.auth.token.get('email', '').lower()]);
+    }
+
+    // Standard Estimate Validation
+    function isValidEstimate(data) {
+      return data.id is string && data.id.size() <= 128
+          && data.userId is string && data.userId.size() <= 128
+          && data.projectInfo is map
+          && data.divisions is list
+          && (data.get('collaborators', []) is list)
+          && data.updatedAt is string;
+    }
+
+    // ===============================================================
+    // Collection Matches
+    // ===============================================================
+
+    // 1. User Profiles
+    match /users/{userId} {
+      allow read: if isSignedIn() && request.auth.uid == userId;
+      allow write: if isSignedIn() && request.auth.uid == userId;
+    }
+
+    // 2. Estimates
+    match /estimates/{estimateId} {
+      // List: Optimized for the Firestore Query Prover.
+      // Flattened to ensure the backend can statically verify the 'array-contains' query.
+      allow list: if isSignedIn() && (
+        resource.data.userId == request.auth.uid || 
+        request.auth.token.email in resource.data.collaborators ||
+        request.auth.token.email.lower() in resource.data.collaborators
+      );
+
+      // Get: Standard row-level check.
+      allow get: if isSignedIn() && (
+        resource.data.userId == request.auth.uid || isCollaborator(resource.data)
+      );
+      
+      // Create: user must be owner
+      allow create: if isSignedIn() 
+        && isValidId(estimateId)
+        && incoming().userId == request.auth.uid
+        && isValidEstimate(incoming());
+      
+      // Update: Owner or Collaborator
+      allow update: if isSignedIn() && (
+        (resource.data.userId == request.auth.uid || isCollaborator(resource.data)) &&
+        incoming().userId == existing().userId && 
+        isValidEstimate(incoming()) &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['projectInfo', 'divisions', 'updatedAt', 'collaborators'])
+      );
+      
+      // Delete: Only owner
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    // 3. User Templates
+    match /userTemplates/{userId} {
+      allow read, write: if isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Default deny for everything else
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
