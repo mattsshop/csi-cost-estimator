@@ -122,8 +122,14 @@ const App: React.FC = () => {
   console.log("App component rendering...");
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<{ status: string; role: string } | null>(null);
-  const isApproved = userProfile?.status === 'approved' || userProfile?.role === 'admin' || user?.email === 'matt@mattsshop.com';
-  const isAdmin = userProfile?.role === 'admin' || user?.email === 'matt@mattsshop.com';
+  const normalizedEmail = user?.email?.toLowerCase().trim() || '';
+  const isMatt = normalizedEmail === 'matt@mattsshop.com';
+  const isAdmin = userProfile?.role === 'admin' || isMatt;
+  const isApproved = userProfile?.status === 'approved' || isAdmin;
+  
+  if (user) {
+    console.log("Admin Check - Logged in as:", normalizedEmail, "isAdmin:", isAdmin);
+  }
 
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [projectInfo, setProjectInfo] = useState<ProjectInfo>({

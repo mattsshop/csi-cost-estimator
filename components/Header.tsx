@@ -60,9 +60,9 @@ const Header: React.FC<HeaderProps> = ({ projectInfo, onChange, onSave, onNewPro
           {isAdmin && (
             <button
               onClick={onOpenAdmin}
-              className="px-3 py-1 bg-purple-100 text-purple-700 hover:bg-purple-200 rounded-full text-xs font-bold transition-colors flex items-center gap-1.5"
+              className="px-4 py-1.5 bg-purple-600 text-white hover:bg-purple-700 rounded-full text-xs font-black transition-all shadow-lg shadow-purple-200 flex items-center gap-1.5 border-2 border-white"
             >
-              <Shield size={12} />
+              <Shield size={14} fill="currentColor" />
               ADMIN PANEL
             </button>
           )}
