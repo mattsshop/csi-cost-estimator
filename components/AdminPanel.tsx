@@ -153,13 +153,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                 >
                   <div className="flex items-center gap-4">
                     <img 
-                      src={user.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.displayName)}&background=random`} 
-                      alt={user.displayName}
+                      src={user.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.displayName || 'User')}&background=random`} 
+                      alt={user.displayName || 'User'}
                       className="w-12 h-12 rounded-full border-2 border-white shadow-sm"
                     />
                     <div>
                       <div className="flex items-center gap-2">
-                        <h3 className="font-bold text-gray-900">{user.displayName}</h3>
+                        <h3 className="font-bold text-gray-900">{user.displayName || 'User'}</h3>
                         {user.role === 'admin' && (
                           <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-[10px] font-bold rounded-full flex items-center gap-1">
                             <Shield size={10} />
@@ -171,7 +171,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose }) => {
                           user.status === 'rejected' ? 'bg-red-100 text-red-700' :
                           'bg-amber-100 text-amber-700'
                         }`}>
-                          {user.status.toUpperCase()}
+                          {(user.status || 'pending').toUpperCase()}
                         </span>
                       </div>
                       <div className="flex items-center gap-3 mt-1">
