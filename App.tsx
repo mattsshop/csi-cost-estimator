@@ -482,6 +482,7 @@ const App: React.FC = () => {
       const provider = new GoogleAuthProvider();
       provider.addScope('email');
       provider.addScope('profile');
+      provider.setCustomParameters({ prompt: 'select_account' });
       await signInWithPopup(auth, provider);
       showToast("Logged in successfully!", "success");
     } catch (error: any) {
