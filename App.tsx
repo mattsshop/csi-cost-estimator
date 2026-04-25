@@ -1,5 +1,5 @@
 
-// AI-DEPLOY: Final attempt to trigger GitHub Export update - ensure Hosting is enabled in Firebase Console
+// AI-DEPLOY: Triggering GitHub Export - Manual workflow trigger added.
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { initialData } from './data/csiCodes';
 import { Division as DivisionType, ProjectInfo, LineItem, ProjectData } from './types';
