@@ -1,5 +1,5 @@
 
-// AI-DEPLOY: Small comment to trigger GitHub Export update
+// AI-DEPLOY: Final attempt to trigger GitHub Export update - ensure Hosting is enabled in Firebase Console
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { initialData } from './data/csiCodes';
 import { Division as DivisionType, ProjectInfo, LineItem, ProjectData } from './types';
