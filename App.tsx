@@ -43,9 +43,10 @@ import {
 } from 'firebase/firestore';
 
 const getAi = () => {
-  // In our build system, process.env.GEMINI_API_KEY is defined by vite.config.ts at build time.
-  // If you are deploying externally, ensure this environment variable is set during your build.
-  const apiKey = process.env.GEMINI_API_KEY;
+  // Check process.env (injected by our Vite config or Node environment)
+  // Check import.meta.env (standard Vite environment variables)
+  const apiKey = process.env.GEMINI_API_KEY || (import.meta.env && (import.meta.env.VITE_GEMINI_API_KEY as string));
+  
   if (!apiKey || apiKey === 'undefined' || apiKey === '') {
     throw new Error("MISSING_API_KEY");
   }
