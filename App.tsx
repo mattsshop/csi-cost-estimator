@@ -112,7 +112,7 @@ const generateId = () => {
 };
 
 // Helper to catch hanging Firestore writes that are retrying internally due to quota
-const raceWithTimeout = <T,>(promise: Promise<T>, timeoutMs: number = 4000): Promise<T> => {
+const raceWithTimeout = <T,>(promise: Promise<T>, timeoutMs: number = 10000): Promise<T> => {
   return Promise.race([
     promise,
     new Promise<T>((_, reject) => 
@@ -646,12 +646,14 @@ const App: React.FC = () => {
       const errorMessage = error.message || String(error);
       const errorCode = error.code || "";
       
-      if (errorMessage.includes('quota') || errorMessage.includes('resource-exhausted') || errorCode === 'resource-exhausted' || errorMessage.includes('FIRESTORE_TIMEOUT')) {
+      if (errorMessage.includes('quota') || errorMessage.includes('resource-exhausted') || errorCode === 'resource-exhausted') {
         showToast("Cloud storage quota exceeded. Changes will save locally but won't sync until tomorrow.", "warning");
         setIsQuotaExceeded(true);
         localStorage.setItem('firestore_quota_error', JSON.stringify({ timestamp: Date.now() }));
-        // Update the ref anyway to stop the auto-save retry loop for this state
         lastSavedRef.current = JSON.stringify({ projectInfo, divisions });
+      } else if (errorMessage.includes('FIRESTORE_TIMEOUT')) {
+        showToast("Saving task taking longer than expected. Retrying in background...", "info");
+        // Don't set isQuotaExceeded for timeouts, just let it try again or fail softly
       } else if (!isSilent) {
         if (errorMessage.includes('permission-denied') || errorMessage.includes('insufficient permissions')) {
           showToast("Permission denied. Ensure your Firestore rules are deployed and you are logged in correctly.", "error");
@@ -835,7 +837,7 @@ const App: React.FC = () => {
     try {
       const ai = getAi();
       const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
+        model: "gemini-1.5-flash",
         contents: `I am building a construction estimate for a project named "${projectInfo.jobName}" at "${projectInfo.address}". 
         It has ${projectInfo.rooms} rooms and ${projectInfo.squareFeet} sq ft. 
         Can you provide a brief, professional description for this project that I can use in a proposal?`,
@@ -941,15 +943,17 @@ const App: React.FC = () => {
     try {
       await raceWithTimeout(updateDoc(doc(db, 'estimates', currentProjectId), {
         collaborators: newCollaborators
-      }), 4000);
+      }));
       setCollaborators(newCollaborators);
       showToast(`${normalizedEmail} added as a collaborator.`, "success");
     } catch (error: any) {
       const msg = (error.message || "").toLowerCase();
-      if (msg.includes("quota") || msg.includes("resource-exhausted") || msg.includes("timeout")) {
+      if (msg.includes("quota") || msg.includes("resource-exhausted")) {
         setIsQuotaExceeded(true);
         localStorage.setItem('firestore_quota_error', JSON.stringify({ timestamp: Date.now() }));
         showToast("Cloud storage quota exceeded.", "warning");
+      } else if (msg.includes("timeout")) {
+        showToast("Request timed out. Please check your connection.", "warning");
       }
       handleFirestoreError(error, OperationType.WRITE, `estimates/${currentProjectId}`);
     }
@@ -966,15 +970,17 @@ const App: React.FC = () => {
     try {
       await raceWithTimeout(updateDoc(doc(db, 'estimates', currentProjectId), {
         collaborators: newCollaborators
-      }), 4000);
+      }));
       setCollaborators(newCollaborators);
       showToast(`${normalizedEmail} removed.`, "info");
     } catch (error: any) {
       const msg = (error.message || "").toLowerCase();
-      if (msg.includes("quota") || msg.includes("resource-exhausted") || msg.includes("timeout")) {
+      if (msg.includes("quota") || msg.includes("resource-exhausted")) {
         setIsQuotaExceeded(true);
         localStorage.setItem('firestore_quota_error', JSON.stringify({ timestamp: Date.now() }));
         showToast("Cloud storage quota exceeded.", "warning");
+      } else if (msg.includes("timeout")) {
+        showToast("Request timed out.", "warning");
       }
       handleFirestoreError(error, OperationType.WRITE, `estimates/${currentProjectId}`);
     }
@@ -1090,7 +1096,7 @@ const App: React.FC = () => {
           };
 
       const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
+        model: "gemini-1.5-flash",
         contents,
         config: {
           responseMimeType: "application/json",
@@ -1136,7 +1142,7 @@ const App: React.FC = () => {
       
       const ai = getAi();
       const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
+        model: "gemini-1.5-flash",
         contents: `Generate a list of construction cost line items for the following project division: "${division.title}".
         User request: "${prompt}"
         
