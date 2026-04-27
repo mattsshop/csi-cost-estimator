@@ -45,7 +45,7 @@ import {
 const getAi = () => {
   // Check process.env (injected by our Vite config or Node environment)
   // Check import.meta.env (standard Vite environment variables)
-  const apiKey = process.env.GEMINI_API_KEY || (import.meta.env && (import.meta.env.VITE_GEMINI_API_KEY as string));
+  const apiKey = process.env.GEMINI_API_KEY;
   
   if (!apiKey || apiKey === 'undefined' || apiKey === '') {
     throw new Error("MISSING_API_KEY");

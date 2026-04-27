@@ -134,14 +134,13 @@ export const generatePdf = (
                         itemTotalWithOverhead.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
                     ]);
                 } else if (showDetailedWeights) {
-                    const factor = (1 + overheadRate / 100);
                     body.push([
                         item.costCode,
                         serviceName,
-                        (item.material * factor).toLocaleString('en-US', { style: 'currency', currency: 'USD' }),
-                        (item.labor * factor).toLocaleString('en-US', { style: 'currency', currency: 'USD' }),
-                        (item.equipment * factor).toLocaleString('en-US', { style: 'currency', currency: 'USD' }),
-                        (item.subContract * factor).toLocaleString('en-US', { style: 'currency', currency: 'USD' }),
+                        item.material.toLocaleString('en-US', { style: 'currency', currency: 'USD' }),
+                        item.labor.toLocaleString('en-US', { style: 'currency', currency: 'USD' }),
+                        item.equipment.toLocaleString('en-US', { style: 'currency', currency: 'USD' }),
+                        item.subContract.toLocaleString('en-US', { style: 'currency', currency: 'USD' }),
                         itemTotalWithOverhead.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
                     ]);
                 } else {
@@ -214,7 +213,7 @@ export const generatePdf = (
     const siteworkBase = siteworkDivs.reduce((acc, div) => {
         return acc + div.items.reduce((sum, item) => sum + (Number(item.material) + Number(item.labor) + Number(item.equipment) + Number(item.subContract)), 0);
     }, 0);
-    const siteworkGrandTotal = (siteworkBase * overheadRate) * (1 + projectInfo.margin / 100);
+    const siteworkGrandTotal = (siteworkBase * (1 + overheadRate / 100)) * (1 + projectInfo.margin / 100);
 
     const totalCostPerSqFt = grandTotal / sqftSize;
     const siteworkCostPerSqFt = siteworkGrandTotal / sqftSize;
