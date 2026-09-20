@@ -1,7 +1,7 @@
 
 import React, { useRef } from 'react';
 import { ProjectInfo } from '../types';
-import { Save, FolderOpen, FileSpreadsheet, Sparkles, Loader2, Plus, LogIn, LogOut, User as UserIcon, UserPlus, Shield } from 'lucide-react';
+import { Save, FolderOpen, FileSpreadsheet, Sparkles, Loader2, Plus, LogIn, LogOut, User as UserIcon, UserPlus, Shield, Upload } from 'lucide-react';
 import { User } from 'firebase/auth';
 
 interface HeaderProps {
@@ -18,6 +18,7 @@ interface HeaderProps {
   onGeminiHelp: () => void;
   isSaving: boolean;
   isGenerating: boolean;
+  isImporting?: boolean;
   user: User | null;
   onLogin: () => void;
   onLogout: () => void;
@@ -42,7 +43,7 @@ const InfoInput: React.FC<{label: string, value: string | number, onChange: (e: 
 );
 
 
-const Header: React.FC<HeaderProps> = ({ projectInfo, onChange, onSave, onNewProject, onLoad, onExportExcel, onOpenProjectList, onSaveTemplate, onShare, canShare, onGeminiHelp, isSaving, isGenerating, user, onLogin, onLogout, isLoggingIn, isAdmin, onOpenAdmin }) => {
+const Header: React.FC<HeaderProps> = ({ projectInfo, onChange, onSave, onNewProject, onLoad, onExportExcel, onOpenProjectList, onSaveTemplate, onShare, canShare, onGeminiHelp, isSaving, isGenerating, isImporting = false, user, onLogin, onLogout, isLoggingIn, isAdmin, onOpenAdmin }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleLoadClick = () => {
@@ -100,9 +101,19 @@ const Header: React.FC<HeaderProps> = ({ projectInfo, onChange, onSave, onNewPro
               type="file" 
               ref={fileInputRef} 
               onChange={onLoad}
-              accept=".json"
+              accept=".json,.xlsx,.xlsm,.xls"
               className="hidden" 
           />
+
+          <button
+              onClick={handleLoadClick}
+              disabled={isImporting}
+              title="Load a saved .json project or import an existing Excel budget"
+              className="flex items-center gap-2 bg-white text-gray-700 font-semibold py-3 px-5 rounded-lg border border-gray-200 hover:bg-gray-50 active:bg-gray-100 active:scale-95 transition-all text-sm shadow-sm disabled:opacity-50"
+          >
+              {isImporting ? <Loader2 size={18} className="animate-spin" /> : <Upload size={18} />}
+              {isImporting ? 'Importing...' : 'Import Budget'}
+          </button>
           
           <button
               onClick={onNewProject}
