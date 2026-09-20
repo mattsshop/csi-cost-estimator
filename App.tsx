@@ -8,7 +8,6 @@ import Summary from './components/Summary';
 import { generatePdf } from './services/pdfService';
 import { generateMissingPricesPdf } from './services/missingPricesService';
 import { generateExcel } from './services/excelService';
-import { importEstimateFromExcel } from './services/excelImportService';
 import { GoogleGenAI, Type } from "@google/genai";
 import ProjectList from './components/ProjectList';
 import AIQuoteModal from './components/AIQuoteModal';
@@ -150,7 +149,6 @@ const App: React.FC = () => {
   const [isProjectListOpen, setIsProjectListOpen] = useState(false);
   const [userProjects, setUserProjects] = useState<any[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [isImporting, setIsImporting] = useState(false);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [shareLink, setShareLink] = useState('');
@@ -862,43 +860,9 @@ const App: React.FC = () => {
     }
   };
 
-  const handleLoadExcel = useCallback(async (file: File) => {
-    setIsImporting(true);
-    try {
-      const { projectData, stats, warnings } = await importEstimateFromExcel(file);
-
-      setProjectInfo(projectData.projectInfo);
-      setDivisions(projectData.divisions);
-      setCurrentProjectId(null); // Imported budgets start as a new, unsaved project.
-
-      showToast(
-        `Imported ${stats.items} line items across ${stats.divisions} divisions ` +
-        `($${Math.round(stats.subTotal).toLocaleString()} base cost). Review, then Save.`,
-        'success'
-      );
-
-      if (warnings.length) {
-        console.warn('Excel import warnings:', warnings);
-        showToast(`${warnings.length} row(s) need a look — see the browser console.`, 'warning');
-      }
-    } catch (error: any) {
-      console.error('Excel import failed:', error);
-      showToast(error.message || 'Could not read that workbook.', 'error');
-    } finally {
-      setIsImporting(false);
-    }
-  }, []);
-
   const handleLoadProject = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
-
-    // Spreadsheet budgets take the Excel path; .json keeps the original behaviour.
-    if (/\.(xlsx|xlsm|xls)$/i.test(file.name)) {
-      handleLoadExcel(file);
-      event.target.value = '';
-      return;
-    }
 
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -924,7 +888,7 @@ const App: React.FC = () => {
     };
     reader.readAsText(file);
     event.target.value = '';
-  }, [handleLoadExcel]);
+  }, []);
 
   const subTotalBase = useMemo(() => {
     return divisions.reduce((total, div) => {
@@ -1324,7 +1288,6 @@ const App: React.FC = () => {
             onGeminiHelp={handleGeminiHelp}
             isSaving={isSaving}
             isGenerating={isGenerating}
-            isImporting={isImporting}
             user={user}
             onLogin={handleLogin}
             onLogout={handleLogout}
